@@ -164,3 +164,67 @@ I reviewed the semantic model and current reporting patterns.
 The primary finding is that Calculation Groups provide reusable and governed time intelligence logic, but their value is realized only when reports leverage explicit measures.
 
 My recommendation is to retain Calculation Groups and standardize explicit aggregation measures across the Marketing fact tables.
+
+
+
+# Spike: Review Calculation Group Use Case
+
+## Objective
+
+Evaluate the use of Calculation Groups versus implicit aggregations within the Marketing Datamart semantic model and recommend the most suitable approach.
+
+## Current State
+
+### Semantic Model Reviewed
+
+* Marketing Datamart Tabular Model
+
+### Findings
+
+* Existing Calculation Groups: [To be completed]
+* Existing Measures: [To be completed]
+* Fact Tables Reviewed: [To be completed]
+* Date Dimension Present: [Yes/No]
+
+## Analysis
+
+### Benefits of Calculation Groups
+
+* Centralized time intelligence logic
+* Reduced DAX duplication
+* Consistent calculations across reports
+* Easier long-term maintenance
+
+### Benefits of Implicit Aggregations
+
+* Simpler report authoring
+* Less upfront measure development
+
+### Risks of Implicit Aggregations
+
+* Inconsistent calculations
+* Duplicated business logic
+* Limited compatibility with Calculation Groups
+
+## Recommendation
+
+Retain Calculation Groups for reusable time intelligence calculations and standardize explicit measures for commonly used metrics across Marketing fact tables.
+
+## Proposed Follow-Up Work
+
+### Story 1
+
+Re-implement Time Intelligence Calculation Group
+
+### Story 2
+
+Create Explicit Aggregation Measures for Common Fact Table Metrics
+
+### Story 3
+
+Validate Calculation Logic with Business Stakeholders
+
+## Risks and Considerations
+
+* Existing reports may require updates to use explicit measures.
+* Business users should validate calculation outputs before deployment.
