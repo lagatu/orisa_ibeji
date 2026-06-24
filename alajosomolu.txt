@@ -1,0 +1,182 @@
+
+Spike: Review Calculation Group Use Case for DAX Efficiency
+
+Objective
+Review the use case for Calculation Groups in the Marketing Datamart semantic model and document how they can improve efficiency by reducing repeated DAX logic compared to creating many separate time-based measures.
+
+Background
+In Power BI semantic models, business metrics are commonly created as explicit DAX measures. When time intelligence is needed, teams often create separate measures for each metric and each time period.
+
+Example:
+- Total AUM
+- Total AUM YTD
+- Total AUM Prior Year
+- Total AUM YoY %
+- Total Clients
+- Total Clients YTD
+- Total Clients Prior Year
+- Total Clients YoY %
+
+This pattern can lead to a high number of repeated DAX measures, making the model harder to maintain.
+
+Calculation Groups provide a reusable way to apply the same calculation logic across multiple base measures.
+
+Current Evaluation Focus
+- Existing base measures
+- Repeated DAX patterns
+- Time intelligence calculations
+- Implicit aggregation limitations
+- Maintenance impact
+- Follow-up Jira stories needed
+
+Key Concept
+Calculation Groups are most useful when the same calculation pattern needs to be applied across multiple measures.
+
+Base measures:
+- Total AUM
+- Total AUM Clients
+- Total AUM Accounts
+
+Calculation Group:
+- Current
+- MTD
+- QTD
+- YTD
+- Prior Year
+- YoY Change
+- YoY %
+
+Working Example
+
+Base Measures
+
+Total AUM =
+SUM(FactAUM[AUMValue])
+
+Total AUM Clients =
+DISTINCTCOUNT(FactAUM[ClientID])
+
+Total AUM Accounts =
+DISTINCTCOUNT(FactAUM[AccountID])
+
+Without Calculation Groups
+
+Total AUM YTD =
+CALCULATE([Total AUM], DATESYTD(DimDate[Date]))
+
+Total AUM Clients YTD =
+CALCULATE([Total AUM Clients], DATESYTD(DimDate[Date]))
+
+Total AUM Accounts YTD =
+CALCULATE([Total AUM Accounts], DATESYTD(DimDate[Date]))
+
+Total AUM Prior Year =
+CALCULATE([Total AUM], SAMEPERIODLASTYEAR(DimDate[Date]))
+
+Total AUM Clients Prior Year =
+CALCULATE([Total AUM Clients], SAMEPERIODLASTYEAR(DimDate[Date]))
+
+Total AUM Accounts Prior Year =
+CALCULATE([Total AUM Accounts], SAMEPERIODLASTYEAR(DimDate[Date]))
+
+Issue With This Approach
+
+With only 3 base measures and 3 time calculations, multiple additional measures must be created.
+
+If the model has 20 commonly used base measures and 6 time intelligence views, this could create 120 additional DAX measures.
+
+This increases:
+- DAX duplication
+- Maintenance effort
+- Testing effort
+- Risk of inconsistent logic
+- Model clutter
+
+With Calculation Groups
+
+Calculation Group Name:
+Time Intelligence
+
+Calculation Items:
+- Current
+- MTD
+- QTD
+- YTD
+- Prior Year
+- YoY Change
+- YoY %
+
+Current =
+SELECTEDMEASURE()
+
+YTD =
+CALCULATE(
+    SELECTEDMEASURE(),
+    DATESYTD(DimDate[Date])
+)
+
+Prior Year =
+CALCULATE(
+    SELECTEDMEASURE(),
+    SAMEPERIODLASTYEAR(DimDate[Date])
+)
+
+Efficiency Benefit
+
+Without Calculation Groups:
+3 base measures × multiple time views = many duplicated measures
+
+With Calculation Groups:
+3 base measures + 1 Calculation Group with reusable calculation items
+
+The same Calculation Group can apply to:
+- Total AUM
+- Total AUM Clients
+- Total AUM Accounts
+- Total Leads
+- Total Campaign Spend
+- Total Conversions
+
+Calculation Groups vs Implicit Aggregation
+
+Calculation Groups are designed to work with explicit measures.
+
+Example:
+Total AUM = SUM(FactAUM[AUMValue])
+
+Implicit aggregation happens when a user drags a numeric column directly into a visual and Power BI automatically aggregates it.
+
+Recommendation
+
+Maintain Calculation Groups for reusable time intelligence logic.
+
+Create explicit aggregation measures for commonly used values in each fact table.
+
+Avoid relying on implicit aggregations for governed reporting metrics.
+
+Recommended Approach
+
+1. Keep or re-implement the Time Intelligence Calculation Group.
+2. Create explicit base measures for commonly used fact table metrics.
+3. Use the Calculation Group to apply common time calculations across those base measures.
+4. Validate outputs with business users.
+5. Create follow-up Jira stories for implementation.
+
+Proposed Follow-Up Jira Stories
+
+Story 1:
+Re-implement Time Intelligence Calculation Group
+
+Story 2:
+Create Explicit Aggregation Measures for Common Fact Table Values
+
+Story 3:
+Validate Calculation Group Outputs with Business Users
+
+Final Recommendation
+
+The Marketing Datamart should maintain Calculation Groups where they reduce repeated DAX logic, especially for time intelligence calculations.
+
+To fully benefit from Calculation Groups, the model should use explicit base measures for commonly used fact table values instead of relying on implicit aggregations.
+
+This approach improves efficiency, consistency, governance, and long-term maintainability of the semantic model.
