@@ -1,0 +1,98 @@
+
+DATABRICKS DEFAULT JOB / PIPELINE LOG TABLES TO CHECK
+====================================================
+
+Run these commands first:
+
+SHOW SCHEMAS IN system;
+
+SHOW TABLES IN system;
+
+SHOW TABLES IN system.lakeflow;
+
+====================================================
+OPTION 1 - LAKEFLOW JOBS (Most Likely)
+====================================================
+
+SHOW TABLES IN system.lakeflow;
+
+Possible tables:
+
+system.lakeflow.jobs
+
+system.lakeflow.job_run_timeline
+
+Example:
+
+SELECT *
+FROM system.lakeflow.job_run_timeline
+LIMIT 10;
+
+Search for job:
+
+SELECT *
+FROM system.lakeflow.job_run_timeline
+WHERE job_name = 'job_fresh_factpositiondaily'
+ORDER BY period_start_time DESC;
+
+====================================================
+OPTION 2 - SYSTEM TABLES
+====================================================
+
+SHOW TABLES IN system;
+
+Explore available tables:
+
+SELECT *
+FROM system.information_schema.tables;
+
+====================================================
+OPTION 3 - CUSTOM ENTERPRISE AUDIT TABLES
+====================================================
+
+Common enterprise naming conventions:
+
+audit.job_execution_log
+
+audit.pipeline_execution_log
+
+governance.job_runs
+
+monitoring.pipeline_status
+
+monitoring.job_history
+
+====================================================
+TIMELINESS QUERY TEMPLATE
+====================================================
+
+SELECT
+    CASE
+        WHEN EXISTS
+        (
+            SELECT 1
+            FROM system.lakeflow.job_run_timeline
+            WHERE job_name = 'job_fresh_factpositiondaily'
+              AND result_state = 'SUCCEEDED'
+              AND CAST(period_start_time AS DATE) = CURRENT_DATE() - 1
+        )
+        THEN 100.00
+        ELSE 0.00
+    END AS TimelinessScore;
+
+NOTE:
+Replace table/column names if your environment differs.
+
+====================================================
+QUESTIONS FOR NICK
+====================================================
+
+1. Is job_fresh_factpositiondaily the correct job to monitor
+   for federated_acquisition_pipeline?
+
+2. Which table/view stores job execution history?
+
+3. Should Timeliness be:
+   - Success only
+   OR
+   - Success + SLA completion time?
