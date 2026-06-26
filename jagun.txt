@@ -1,0 +1,165 @@
+DQ Overall Health Dashboard SQL
+
+WITH completeness_checks AS
+(
+    -- Metric 1: Total AUM Amount
+    SELECT
+        COUNT(*) AS TotalRecords,
+        SUM(
+            CASE
+                WHEN MarketValueBase IS NULL
+                  OR AccruedIncomeBase IS NULL
+                  OR TRIM(CAST(MarketValueBase AS STRING)) = ''
+                  OR TRIM(CAST(AccruedIncomeBase AS STRING)) = ''
+                THEN 1 ELSE 0
+            END
+        ) AS FailedRecords
+    FROM silver
+
+    UNION ALL
+
+    -- Metric 2: # of Clients
+    SELECT
+        COUNT(*) AS TotalRecords,
+        SUM(
+            CASE
+                WHEN PortfolioCode IS NULL
+                  OR TRIM(PortfolioCode) = ''
+                THEN 1 ELSE 0
+            END
+        ) AS FailedRecords
+    FROM silver
+
+    UNION ALL
+
+    -- Metric 3: # of Accounts
+    SELECT
+        COUNT(*) AS TotalRecords,
+        SUM(
+            CASE
+                WHEN FINAccountNumber IS NULL
+                  OR TRIM(FINAccountNumber) = ''
+                THEN 1 ELSE 0
+            END
+        ) AS FailedRecords
+    FROM gold
+),
+
+completeness_score AS
+(
+    SELECT
+        ROUND(
+            CASE
+                WHEN SUM(TotalRecords) = 0 THEN 0
+                ELSE
+                    (SUM(TotalRecords) - SUM(FailedRecords)) * 100.0
+                    / SUM(TotalRecords)
+            END,
+            2
+        ) AS Score
+    FROM completeness_checks
+),
+
+timeliness_score AS
+(
+    SELECT
+        CASE
+            WHEN EXISTS
+            (
+                SELECT 1
+                FROM system.lakeflow.job_run_timeline
+                WHERE job_id = 977461102577872
+                  AND result_state = 'SUCCEEDED'
+                  AND CAST(period_start_time AS DATE) = CURRENT_DATE() - 1
+            )
+            THEN 100.00
+            ELSE 0.00
+        END AS Score
+),
+
+uniqueness_score AS
+(
+    WITH duplicate_records AS
+    (
+        SELECT
+            PortfolioCode,
+            AsOfDate,
+            COUNT(*) AS Cnt
+        FROM gold
+        GROUP BY
+            PortfolioCode,
+            AsOfDate
+        HAVING COUNT(*) > 1
+    ),
+
+    failed AS
+    (
+        SELECT
+            COALESCE(SUM(Cnt - 1), 0) AS FailedRecords
+        FROM duplicate_records
+    ),
+
+    total AS
+    (
+        SELECT
+            COUNT(*) AS TotalRecords
+        FROM gold
+    )
+
+    SELECT
+        ROUND(
+            CASE
+                WHEN t.TotalRecords = 0 THEN 0
+                ELSE
+                    (t.TotalRecords - f.FailedRecords) * 100.0
+                    / t.TotalRecords
+            END,
+            2
+        ) AS Score
+    FROM total t
+    CROSS JOIN failed f
+),
+
+dq_scores AS
+(
+    SELECT
+        'Completeness' AS DQDimension,
+        Score,
+        0.50 AS Weight
+    FROM completeness_score
+
+    UNION ALL
+
+    SELECT
+        'Timeliness' AS DQDimension,
+        Score,
+        0.25 AS Weight
+    FROM timeliness_score
+
+    UNION ALL
+
+    SELECT
+        'Uniqueness' AS DQDimension,
+        Score,
+        0.25 AS Weight
+    FROM uniqueness_score
+),
+
+overall_health AS
+(
+    SELECT
+        ROUND(SUM(Score * Weight), 2) AS OverallHealth
+    FROM dq_scores
+)
+
+SELECT
+    o.OverallHealth,
+
+    MAX(CASE WHEN d.DQDimension = 'Completeness' THEN d.Score END) AS Completeness,
+    MAX(CASE WHEN d.DQDimension = 'Timeliness' THEN d.Score END) AS Timeliness,
+    MAX(CASE WHEN d.DQDimension = 'Uniqueness' THEN d.Score END) AS Uniqueness
+
+FROM overall_health o
+CROSS JOIN dq_scores d
+GROUP BY
+    o.OverallHealth;
